@@ -3,7 +3,8 @@ import hashlib
 import base64
 import io
 import os.path
-from typing import Tuple
+from os import PathLike
+from typing import Tuple, Union
 from pdf2image import convert_from_path
 
 import aiofiles as aiof
@@ -15,12 +16,14 @@ from src.config import settings
 
 
 async def save_file_task(content: bytes, path: str):
+    """ Сохранение файла """
     async with aiof.open(path, 'wb') as out:
         await out.write(content)
         await out.flush()
 
 
 async def read_file(path) -> bytes:
+    """ Чтение файла """
     async with aiof.open(path, 'rb') as out:
         content = await out.read()
         await out.flush()
@@ -30,8 +33,8 @@ async def read_file(path) -> bytes:
 
 async def create_or_get_exist_file(filename: str, content: bytes) -> Tuple[bool, models.File]:
     """
-    Создает запись о новом файле или возвращает запись об уже существующем
-    :param filename: имя файла
+    Создает запись о новом файле или возвращает запись об уже существующем.
+    :param filename: имя файла.
     :param content: данные
     :return: (Создан новый файл, информация о файле)
     """
@@ -52,6 +55,7 @@ def _get_storage_path(filename):
 
 
 async def upload_file(file: UploadFile, background_task: BackgroundTasks) -> schemas.CreatedFileInfo:
+    """ Загрузить файл на сервер """
     content = await file.read()
     is_created_new, file_info = await create_or_get_exist_file(file.filename, content)
     path = _get_storage_path(file.filename)
@@ -64,6 +68,7 @@ async def upload_file(file: UploadFile, background_task: BackgroundTasks) -> sch
 
 
 def _get_preview(file: models.File) -> bytes:
+    """ Превью файла в виде изображения, блокирующая"""
     if file.extension == 'pdf':
         path = _get_storage_path(file.filename)
         first_page = convert_from_path(path, 500, single_file=True)[0]
@@ -74,7 +79,8 @@ def _get_preview(file: models.File) -> bytes:
         raise Exception('no such extension supported for preview')
 
 
-async def get_file(file_md5: str, preview=False):
+async def get_file(file_md5: str, preview=False) -> Union[str, bytes]:
+    """ Путь до файла или изображение превью (для определенных расширений) """
     preview_extension = ['pdf']
     file = await models.File.objects.get_or_none(md5=file_md5)
     if not file:
@@ -82,6 +88,7 @@ async def get_file(file_md5: str, preview=False):
     if not preview or file.extension not in preview_extension:
         return _get_storage_path(file.filename)
     else:
+        # Запуск в executor блокирующей функции
         return await asyncio.get_event_loop().run_in_executor(None, _get_preview, file)
 
 
