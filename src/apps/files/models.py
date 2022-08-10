@@ -10,7 +10,7 @@ class File(ormar.Model):
         database = database
 
     id: int = ormar.Integer(primary_key=True)
-    md5: str = ormar.String(max_length=32)
+    md5: str = ormar.String(max_length=32, unique=True)
     extension: str = ormar.String(max_length=20)
     created_at: datetime.datetime = ormar.DateTime(default=datetime.datetime.now)
     title: str = ormar.String(max_length=255)
