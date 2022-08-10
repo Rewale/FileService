@@ -5,6 +5,8 @@ import io
 import os.path
 from os import PathLike
 from typing import Tuple, Union
+
+from PIL import Image
 from pdf2image import convert_from_path
 
 import aiofiles as aiof
@@ -72,29 +74,32 @@ async def upload_file(file: UploadFile, background_task: BackgroundTasks) -> sch
                             created_at=file.created_at)
 
 
-def _get_preview(file: models.File) -> bytes:
-    """ Превью файла в виде изображения, блокирующая"""
-    if file.extension == 'pdf':
-        path = _get_storage_path(file.filename)
-        first_page = convert_from_path(path, 500, single_file=True)[0]
-        img_byte_arr = io.BytesIO()
-        first_page.save(img_byte_arr, format='PNG')
-        return img_byte_arr.getvalue()
-    else:
-        raise Exception('no such extension supported for preview')
+def _get_preview_pdf(file: models.File, dpi: int = 500) -> bytes:
+    """ Превью pdf в виде изображения, блокирующая"""
+    path = _get_storage_path(file.filename)
+    first_page = convert_from_path(path, dpi, single_file=True)[0]
+    img_byte_arr = io.BytesIO()
+    first_page.save(img_byte_arr, format='PNG')
+    return img_byte_arr.getvalue()
 
 
-async def get_file(file_md5: str, preview=False) -> Union[str, bytes]:
+def _get_preview_image(file: models.File, dpi: int = 300) -> bytes:
+    path = _get_storage_path(file.filename)
+    im = Image.open(path)
+    size = dpi, dpi
+    im.thumbnail(size, Image.ANTIALIAS)
+    img_byte_arr = io.BytesIO()
+    im.save(img_byte_arr, "JPEG")
+    return img_byte_arr.getvalue()
+
+
+async def get_file(file_md5: str) -> str:
     """ Путь до файла или изображение превью (для определенных расширений) """
-    preview_extension = ['pdf']
     file = await models.File.objects.get_or_none(md5=file_md5)
     if not file:
         return _get_storage_path('not_found.png')
-    if not preview or file.extension not in preview_extension:
-        return _get_storage_path(file.filename)
-    else:
-        # Запуск в executor блокирующей функции
-        return await asyncio.get_event_loop().run_in_executor(None, _get_preview, file)
+
+    return _get_storage_path(file.filename)
 
 
 async def get_file_b64(file_md5: str):
@@ -124,3 +129,19 @@ async def delete_file(file_md5: str, background_task: BackgroundTasks):
                             id=file.md5,
                             created=False,
                             created_at=file.created_at)
+
+
+async def get_file_preview(file_md5: str, preview_dpi: int) -> bytes:
+    file = await models.File.objects.get_or_none(md5=file_md5)
+
+    if not file:
+        return await read_file(_get_storage_path('not_found.png'))
+
+    if file.extension == 'pdf':
+        # Запуск в executor блокирующей функции
+        return await asyncio.get_event_loop().run_in_executor(None, _get_preview_pdf, file, preview_dpi)
+    elif file.extension in ['png', 'jpg', 'jpeg']:
+        # Запуск в executor блокирующей функции
+        return await asyncio.get_event_loop().run_in_executor(None, _get_preview_image, file, preview_dpi)
+    else:
+        return await read_file(_get_storage_path('not_found.png'))
