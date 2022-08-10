@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from src.apps.files.models import database, metadata, engine
+from src.apps.files.routers import files_router
 
 app = FastAPI()
 
 app.state.database = database
+app.include_router(files_router)
 
 
 @app.on_event("startup")
