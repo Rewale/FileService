@@ -31,6 +31,11 @@ async def read_file(path) -> bytes:
     return content
 
 
+def remove_file(path):
+    """ Удаление файла """
+    os.remove(path)
+
+
 async def create_or_get_exist_file(filename: str, content: bytes) -> Tuple[bool, models.File]:
     """
     Создает запись о новом файле или возвращает запись об уже существующем.
@@ -46,25 +51,25 @@ async def create_or_get_exist_file(filename: str, content: bytes) -> Tuple[bool,
     if exist_file:
         return False, exist_file
 
-    file_info = await models.File.objects.create(title=title, md5=md5, extension=extension)
-    return True, file_info
+    file = await models.File.objects.create(title=title, md5=md5, extension=extension)
+    return True, file
 
 
 def _get_storage_path(filename):
     return os.path.join(settings.FILES_STORAGE_PATH, filename)
 
 
-async def upload_file(file: UploadFile, background_task: BackgroundTasks) -> schemas.CreatedFileInfo:
+async def upload_file(file: UploadFile, background_task: BackgroundTasks) -> schemas.FileInfo:
     """ Загрузить файл на сервер """
     content = await file.read()
-    is_created_new, file_info = await create_or_get_exist_file(file.filename, content)
+    is_created_new, file = await create_or_get_exist_file(file.filename, content)
     path = _get_storage_path(file.filename)
     background_task.add_task(save_file_task, content, path)
-    return schemas.CreatedFileInfo(extension=file_info.extension,
-                                   title=file_info.title,
-                                   id=file_info.md5,
-                                   created=is_created_new,
-                                   created_at=file_info.created_at)
+    return schemas.FileInfo(extension=file.extension,
+                            title=file.title,
+                            id=file.md5,
+                            created=is_created_new,
+                            created_at=file.created_at)
 
 
 def _get_preview(file: models.File) -> bytes:
@@ -104,3 +109,18 @@ async def get_file_b64(file_md5: str):
                                    title=file.title,
                                    id=file_md5,
                                    created_at=file.created_at)
+
+
+async def delete_file(file_md5: str, background_task: BackgroundTasks):
+    file = await models.File.objects.get_or_none(md5=file_md5)
+    if not file:
+        # TODO: custom expection NotFoundFile + middleware
+        return None
+
+    await file.delete()
+    background_task.add_task(remove_file, _get_storage_path(file.filename))
+    return schemas.FileInfo(extension=file.extension,
+                            title=file.title,
+                            id=file.md5,
+                            created=False,
+                            created_at=file.created_at)

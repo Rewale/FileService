@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 
 # TODO: Mixin
-class CreatedFileInfo(BaseModel):
+class FileInfo(BaseModel):
     extension: str
     title: str
     id: str
