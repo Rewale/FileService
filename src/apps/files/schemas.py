@@ -19,3 +19,11 @@ class FileB64Response(BaseModel):
     title: str
     id: str
     created_at: Optional[datetime.datetime]
+
+
+class FileInfoItem(BaseModel):
+    url_preview: str
+    title: str
+    extension: str
+    id: str
+    created_at: datetime.datetime

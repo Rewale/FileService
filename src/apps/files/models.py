@@ -5,6 +5,7 @@ from src.config.db_config import metadata, database, engine
 
 class File(ormar.Model):
     """ Информация о хранимом на сервисе файле """
+
     class Meta:
         metadata = metadata
         database = database
