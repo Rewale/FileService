@@ -13,7 +13,7 @@ import aiofiles as aiof
 from fastapi import UploadFile
 from starlette.background import BackgroundTasks
 
-from src.apps.files import models, schemas
+from src.apps.files import models, schemas, custom_exceptions
 from src.config import settings
 
 
@@ -93,12 +93,17 @@ def _get_preview_image(file: models.File, dpi: int = 300) -> bytes:
     return img_byte_arr.getvalue()
 
 
-async def get_file(file_md5: str) -> str:
-    """ Путь до файла или изображение превью (для определенных расширений) """
+async def _get_file_or_raise(file_md5: str) -> models.File:
     file = await models.File.objects.get_or_none(md5=file_md5)
     if not file:
-        return _get_storage_path('not_found.png')
+        raise custom_exceptions.NotFoundFileException(file_md5)
 
+    return file
+
+
+async def get_file(file_md5: str) -> str:
+    """ Путь до файла или изображение превью (для определенных расширений) """
+    file = await _get_file_or_raise(file_md5)
     return _get_storage_path(file.filename)
 
 
@@ -117,11 +122,7 @@ async def get_file_b64(file_md5: str):
 
 
 async def delete_file(file_md5: str, background_task: BackgroundTasks):
-    file = await models.File.objects.get_or_none(md5=file_md5)
-    if not file:
-        # TODO: custom expection NotFoundFile + middleware
-        return None
-
+    file = await _get_file_or_raise(file_md5)
     await file.delete()
     background_task.add_task(remove_file, _get_storage_path(file.filename))
     return schemas.FileInfo(extension=file.extension,
@@ -132,10 +133,7 @@ async def delete_file(file_md5: str, background_task: BackgroundTasks):
 
 
 async def get_file_preview(file_md5: str, preview_dpi: int) -> bytes:
-    file = await models.File.objects.get_or_none(md5=file_md5)
-
-    if not file:
-        return await read_file(_get_storage_path('not_found.png'))
+    file = await _get_file_or_raise(file_md5)
 
     if file.extension == 'pdf':
         # Запуск в executor блокирующей функции
