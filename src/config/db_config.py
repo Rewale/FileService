@@ -1,7 +1,8 @@
 import databases
 import sqlalchemy
+import src.config.settings as settings
 
-engine = sqlalchemy.create_engine("sqlite:///pr.db")
+engine = sqlalchemy.create_engine(settings.POSTGRES_URL)
 
 metadata = sqlalchemy.MetaData()
-database = databases.Database("sqlite:///pr.db")
+database = databases.Database(settings.POSTGRES_URL)
