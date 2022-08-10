@@ -14,3 +14,7 @@ class File(ormar.Model):
     extension: str = ormar.String(max_length=20)
     created_at: datetime.datetime = ormar.DateTime(default=datetime.datetime.now)
     title: str = ormar.String(max_length=255)
+
+    @property
+    def filename(self) -> str:
+        return f'{self.title}.{self.extension}'

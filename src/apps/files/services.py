@@ -1,4 +1,5 @@
 import hashlib
+import base64
 import os.path
 from typing import Tuple
 
@@ -14,6 +15,14 @@ async def save_file_task(content: bytes, path: str):
     async with aiof.open(path, 'wb') as out:
         await out.write(content)
         await out.flush()
+
+
+async def read_file(path) -> bytes:
+    async with aiof.open(path, 'rb') as out:
+        content = await out.read()
+        await out.flush()
+
+    return content
 
 
 async def create_or_get_exist_file(filename: str, content: bytes) -> Tuple[bool, models.File]:
@@ -53,4 +62,22 @@ async def upload_file(file: UploadFile, background_task: BackgroundTasks) -> sch
 
 async def get_file_path(file_md5: str):
     file = await models.File.objects.get_or_none(md5=file_md5)
+    if not file:
+        return None
+    return _get_storage_path(file.filename)
+
+
+async def get_file_b64(file_md5: str):
+    file = await models.File.objects.get_or_none(md5=file_md5)
+    file_path = _get_storage_path(file.filename)
+
+    content = await read_file(file_path)
+    base_64 = base64.b64encode(content)
+
+    return schemas.FileB64Response(data_b64=base_64,
+                                   extension=file.extension,
+                                   title=file.title,
+                                   id=file_md5,
+                                   created_at=file.created_at)
+
 
