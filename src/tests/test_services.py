@@ -11,3 +11,7 @@ def test__get_storage_path():
     path = "/".join(path.split('/')[:-1])
     os.rmdir(path)
 
+
+def test__prev_path():
+    path = '/home/storage/123/'
+    assert services._prev_path(path) == '/home/storage'

@@ -33,9 +33,20 @@ async def read_file(path) -> bytes:
     return content
 
 
+def _prev_path(path: str):
+    return os.path.abspath(os.path.join(path, '..'))
+
+
 def remove_file(path):
     """ Удаление файла """
     os.remove(path)
+    prev_path = _prev_path(path)
+    if len(os.listdir(prev_path)) == 0:
+        os.rmdir(prev_path)
+
+    prev_path = _prev_path(prev_path)
+    if len(os.listdir(prev_path)) == 0:
+        os.rmdir(prev_path)
 
 
 async def create_or_get_exist_file(filename: str, content: bytes) -> Tuple[bool, models.File]:
