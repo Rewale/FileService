@@ -4,7 +4,7 @@ from starlette.responses import JSONResponse, FileResponse
 
 from src.apps.files.models import database, metadata, engine
 from src.apps.files.routers import files_router
-from src.apps.files.services import _get_storage_path
+from src.apps.files.services import _get_not_found_image
 from src.apps.files.custom_exceptions import NotFoundFileException
 
 app = FastAPI()
@@ -24,8 +24,8 @@ app.add_middleware(
 
 @app.exception_handler(NotFoundFileException)
 async def not_found_file_exception_handler(request: Request, exc: NotFoundFileException):
-    return FileResponse(
-        path=_get_storage_path('not_found.png'),
+    return JSONResponse(
+        content={"message": "file not found"},
         status_code=404
     )
 

@@ -57,15 +57,29 @@ async def create_or_get_exist_file(filename: str, content: bytes) -> Tuple[bool,
     return True, file
 
 
-def _get_storage_path(filename):
-    return os.path.join(settings.FILES_STORAGE_PATH, filename)
+def _get_storage_path(filename, create_path=False):
+    sub_dir = os.path.join(settings.FILES_STORAGE_PATH, filename[:2])
+    sub_sub_dir = os.path.join(settings.FILES_STORAGE_PATH, filename[:2], filename[2:4])
+
+    if create_path:
+        if not os.path.exists(sub_dir):
+            os.mkdir(sub_dir)
+
+        if not os.path.exists(sub_sub_dir):
+            os.mkdir(sub_sub_dir)
+
+    return os.path.join(sub_sub_dir, filename)
+
+
+def _get_not_found_image():
+    return os.path.join(settings.FILES_STORAGE_PATH, 'not_found.png')
 
 
 async def upload_file(file: UploadFile, background_task: BackgroundTasks) -> schemas.FileInfo:
     """ Загрузить файл на сервер """
     content = await file.read()
     is_created_new, file = await create_or_get_exist_file(file.filename, content)
-    path = _get_storage_path(file.filename)
+    path = _get_storage_path(file.filename, True)
     background_task.add_task(save_file_task, content, path)
     return schemas.FileInfo(extension=file.extension,
                             title=file.title,
