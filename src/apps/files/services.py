@@ -7,7 +7,7 @@ from os import PathLike
 from typing import Tuple, Union, List, Optional
 
 from PIL import Image
-from pdf2image import convert_from_path
+from pdf2image import convert_from_path, convert_from_bytes
 
 import aiofiles as aiof
 from fastapi import UploadFile
@@ -78,6 +78,10 @@ async def upload_file(file: UploadFile, background_task: BackgroundTasks) -> sch
     is_created_new, file = await create_or_get_exist_file(file.filename, content)
     path = _get_storage_path(file.filename, True)
     background_task.add_task(save_file_task, content, path)
+
+    if file.extension == 'pdf':
+        background_task.add_task(_create_preview_pdf_from_bytes, file.filename_preview, content)
+
     return schemas.FileInfo(extension=file.extension,
                             title=file.title,
                             id=file.md5,
@@ -85,13 +89,19 @@ async def upload_file(file: UploadFile, background_task: BackgroundTasks) -> sch
                             created_at=file.created_at)
 
 
-def _get_preview_pdf(file: models.File, dpi: int = 500) -> bytes:
+async def _get_preview_pdf(file: models.File, dpi: int = 500) -> bytes:
     """ Превью pdf в виде изображения, блокирующая"""
-    path = _get_storage_path(file.filename)
-    first_page = convert_from_path(path, dpi, single_file=True)[0]
-    img_byte_arr = io.BytesIO()
-    first_page.save(img_byte_arr, format='PNG')
-    return img_byte_arr.getvalue()
+    path_exist = _get_exist_preview_path(file.filename_preview)
+    if path_exist:
+        content = await read_file(path_exist)
+        return content
+    else:
+        content = await read_file(_get_storage_path(file.filename))
+        preview_path = await asyncio.get_event_loop().run_in_executor(None, _create_preview_pdf_from_bytes,
+                                                                      file.filename_preview,
+                                                                      content)
+        content_preview = await read_file(preview_path)
+        return content_preview
 
 
 def __get_sub_sub_path(base_path: str, filename, create_path):
@@ -116,11 +126,10 @@ def _get_preview_storage_path(filename, create_path=True):
     return __get_sub_sub_path(settings.PREVIEW_FILES_STORAGE_PATH, filename, create_path)
 
 
-def _create_preview_pdf(file: models.File, dpi: int = 550) -> str:
+def _create_preview_pdf_from_bytes(filename: str, content_pdf: bytes, dpi: int = 550) -> str:
     """ Создает превью pdf в виде изображения и сохраняет в хранилище, блокирующая"""
-    path = _get_storage_path(file.filename)
-    first_page = convert_from_path(path, dpi, single_file=True)[0]
-    preview_path = _get_preview_storage_path(file.filename)
+    first_page = convert_from_bytes(content_pdf, dpi, single_file=True)[0]
+    preview_path = _get_preview_storage_path(filename)
     first_page.save(preview_path, format='PNG')
     return preview_path
 
@@ -186,7 +195,7 @@ async def get_file_preview(file_md5: str, preview_dpi: int) -> bytes:
 
     if file.extension == 'pdf':
         # Запуск в executor блокирующей функции
-        return await asyncio.get_event_loop().run_in_executor(None, _get_preview_pdf, file, preview_dpi)
+        return await _get_preview_pdf(file)
     elif file.extension in ['png', 'jpg', 'jpeg']:
         # Запуск в executor блокирующей функции
         return await asyncio.get_event_loop().run_in_executor(None, _get_preview_image, file, preview_dpi)

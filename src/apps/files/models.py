@@ -19,3 +19,7 @@ class File(ormar.Model):
     @property
     def filename(self) -> str:
         return f'{self.md5}{self.title}.{self.extension}'
+
+    @property
+    def filename_preview(self) -> str:
+        return f'{self.md5}{self.title}.png'
