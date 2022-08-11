@@ -40,9 +40,3 @@ async def get_file_b64(file_id: str, bt: BackgroundTasks):
 async def get_all_files():
     return await services.get_files()
 
-
-@files_crud_router.put('/', response_model=schemas.FileInfo)
-async def update_file_info(new_file_info: schemas.FileInfo):
-    # TODO: update file info
-    return None
-

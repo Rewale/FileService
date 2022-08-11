@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse, FileResponse
 
 from src.apps.files.models import database, metadata, engine
@@ -10,6 +11,15 @@ app = FastAPI()
 
 app.state.database = database
 app.include_router(files_router)
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.exception_handler(NotFoundFileException)
