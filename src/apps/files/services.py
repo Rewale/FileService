@@ -89,7 +89,7 @@ def _get_preview_image(file: models.File, dpi: int = 300) -> bytes:
     size = dpi, dpi
     im.thumbnail(size, Image.ANTIALIAS)
     img_byte_arr = io.BytesIO()
-    im.save(img_byte_arr, "JPEG")
+    im.save(img_byte_arr, "PNG")
     return img_byte_arr.getvalue()
 
 
