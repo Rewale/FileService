@@ -39,6 +39,8 @@ def _prev_path(path: str):
 
 def remove_file(path):
     """ Удаление файла """
+    if not os.path.exists(path):
+        return
     os.remove(path)
     prev_path = _prev_path(path)
     if len(os.listdir(prev_path)) == 0:
@@ -183,6 +185,7 @@ async def delete_file(file_md5: str, background_task: BackgroundTasks):
     file = await _get_file_or_raise(file_md5)
     await file.delete()
     background_task.add_task(remove_file, _get_storage_path(file.filename))
+    background_task.add_task(remove_file, _get_preview_storage_path(file.filename_preview))
     return schemas.FileInfo(extension=file.extension,
                             title=file.title,
                             id=file.md5,
@@ -200,7 +203,7 @@ async def get_file_preview(file_md5: str, preview_dpi: int) -> bytes:
         # Запуск в executor блокирующей функции
         return await asyncio.get_event_loop().run_in_executor(None, _get_preview_image, file, preview_dpi)
     else:
-        return await read_file(_get_storage_path('not_found.png'))
+        raise custom_exceptions.NotSupportedFilePreviewException(file.md5, file.extension)
 
 
 def get_url_preview(md5: str):
