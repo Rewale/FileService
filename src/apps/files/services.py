@@ -4,7 +4,7 @@ import base64
 import io
 import os.path
 from os import PathLike
-from typing import Tuple, Union, List
+from typing import Tuple, Union, List, Optional
 
 from PIL import Image
 from pdf2image import convert_from_path
@@ -68,20 +68,6 @@ async def create_or_get_exist_file(filename: str, content: bytes) -> Tuple[bool,
     return True, file
 
 
-def _get_storage_path(filename, create_path=False):
-    sub_dir = os.path.join(settings.FILES_STORAGE_PATH, filename[:2])
-    sub_sub_dir = os.path.join(settings.FILES_STORAGE_PATH, filename[:2], filename[2:4])
-
-    if create_path:
-        if not os.path.exists(sub_dir):
-            os.mkdir(sub_dir)
-
-        if not os.path.exists(sub_sub_dir):
-            os.mkdir(sub_sub_dir)
-
-    return os.path.join(sub_sub_dir, filename)
-
-
 def _get_not_found_image():
     return os.path.join(settings.FILES_STORAGE_PATH, 'not_found.png')
 
@@ -106,6 +92,44 @@ def _get_preview_pdf(file: models.File, dpi: int = 500) -> bytes:
     img_byte_arr = io.BytesIO()
     first_page.save(img_byte_arr, format='PNG')
     return img_byte_arr.getvalue()
+
+
+def __get_sub_sub_path(base_path: str, filename, create_path):
+    sub_dir = os.path.join(base_path, filename[:2])
+    sub_sub_dir = os.path.join(base_path, filename[:2], filename[2:4])
+
+    if create_path:
+        if not os.path.exists(sub_dir):
+            os.mkdir(sub_dir)
+
+        if not os.path.exists(sub_sub_dir):
+            os.mkdir(sub_sub_dir)
+
+    return os.path.join(sub_sub_dir, filename)
+
+
+def _get_storage_path(filename, create_path=False):
+    return __get_sub_sub_path(settings.FILES_STORAGE_PATH, filename, create_path)
+
+
+def _get_preview_storage_path(filename, create_path=True):
+    return __get_sub_sub_path(settings.PREVIEW_FILES_STORAGE_PATH, filename, create_path)
+
+
+def _create_preview_pdf(file: models.File, dpi: int = 550) -> str:
+    """ Создает превью pdf в виде изображения и сохраняет в хранилище, блокирующая"""
+    path = _get_storage_path(file.filename)
+    first_page = convert_from_path(path, dpi, single_file=True)[0]
+    preview_path = _get_preview_storage_path(file.filename)
+    first_page.save(preview_path, format='PNG')
+    return preview_path
+
+
+def _get_exist_preview_path(filename: str) -> Optional[str]:
+    path = _get_preview_storage_path(filename, False)
+    if os.path.exists(path):
+        return path
+    return None
 
 
 def _get_preview_image(file: models.File, dpi: int = 300) -> bytes:
