@@ -174,19 +174,25 @@ def get_url_preview(md5: str):
     return f'http://127.0.0.1:8000/files/preview/?file_id={md5}'
 
 
-async def get_files() -> List[schemas.FileInfoItem]:
-    def mapping_func(f: models.File):
-        file_info_item = schemas.FileInfoItem(
-            url_preview=get_url_preview(f.md5),
-            title=f.title,
-            extension=f.extension,
-            id=f.md5,
-            created_at=f.created_at
-        )
-        return file_info_item
+def file_info(f: models.File):
+    file_info_item = schemas.FileInfoItem(
+        url_preview=get_url_preview(f.md5),
+        title=f.title,
+        extension=f.extension,
+        id=f.md5,
+        created_at=f.created_at
+    )
+    return file_info_item
 
+
+async def get_file_info(file_id):
+    file = await _get_file_or_raise(file_id)
+    return file_info(file)
+
+
+async def get_files() -> List[schemas.FileInfoItem]:
     files = await models.File.objects.all()
-    return list(map(mapping_func, files))
+    return list(map(file_info, files))
 
 
 async def update_file_info(file_info: schemas.FileInfo):

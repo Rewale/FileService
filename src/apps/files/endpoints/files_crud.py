@@ -20,6 +20,11 @@ async def get_file(file_id: str):
     return await services.get_file(file_id)
 
 
+@files_crud_router.get('/info', response_model=schemas.FileInfoItem)
+async def get_file_info(file_id: str):
+    return await services.get_file_info(file_id)
+
+
 @files_crud_router.get('/preview')
 async def get_file_preview(file_id: str, preview_dpi: int = 500):
     content = await services.get_file_preview(file_id, preview_dpi)
@@ -39,4 +44,3 @@ async def get_file_b64(file_id: str, bt: BackgroundTasks):
 @files_crud_router.get('/all', response_model=List[schemas.FileInfoItem])
 async def get_all_files():
     return await services.get_files()
-
