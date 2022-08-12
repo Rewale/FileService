@@ -46,7 +46,7 @@ async def get_all_files():
     return await services.get_files()
 
 
-@files_crud_router.get('/all/page/{page}', response_model=List[schemas.FileInfoItem])
+@files_crud_router.get('/all/page/{page}', response_model=schemas.ItemsPage)
 async def get_page_files(page: int, title_contains: Optional[str] = None, extension: Optional[str] = None,
                          count_items: int = 20):
     filter_params = schemas.FilterParams(title_contains=title_contains, extension=extension)

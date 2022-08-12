@@ -1,5 +1,5 @@
 import datetime
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
@@ -34,3 +34,8 @@ class FilterParams(BaseModel):
     title_contains: Optional[str]
     # created_from: datetime.datetime
     # created_to: datetime.datetime
+
+
+class ItemsPage(BaseModel):
+    files: List[FileInfoItem]
+    total_count: int

@@ -234,16 +234,20 @@ async def get_files() -> List[schemas.FileInfoItem]:
 async def get_files_filter(filter_params: schemas.FilterParams, page: Optional[int], count: int):
     files = models.File.objects
 
-    if page and count:
-        files = files.paginate(page, count)
-
     if filter_params.title_contains:
         files = files.filter(title__contains=filter_params.title_contains)
     if filter_params.extension:
         files = files.filter(extension=filter_params.extension)
 
+    total_count = await files.count()
+
+    if page and count:
+        files = files.paginate(page, count)
+
     files = await files.all()
-    return list(map(file_info, files))
+    files_items = list(map(file_info, files))
+
+    return schemas.ItemsPage(files=files_items, total_count=total_count)
 
 
 async def update_file_info(file_info: schemas.FileInfo):
