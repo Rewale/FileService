@@ -27,3 +27,10 @@ class FileInfoItem(BaseModel):
     extension: str
     id: str
     created_at: datetime.datetime
+
+
+class FilterParams(BaseModel):
+    extension: Optional[str]
+    title_contains: Optional[str]
+    # created_from: datetime.datetime
+    # created_to: datetime.datetime

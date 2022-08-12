@@ -1,5 +1,5 @@
 import hashlib
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, UploadFile
 from starlette.background import BackgroundTasks
@@ -44,3 +44,12 @@ async def get_file_b64(file_id: str, bt: BackgroundTasks):
 @files_crud_router.get('/all', response_model=List[schemas.FileInfoItem])
 async def get_all_files():
     return await services.get_files()
+
+
+@files_crud_router.get('/all/page/{page}', response_model=List[schemas.FileInfoItem])
+async def get_page_files(page: int, title_contains: Optional[str] = None, extension: Optional[str] = None,
+                         count_items: int = 20):
+    filter_params = schemas.FilterParams(title_contains=title_contains, extension=extension)
+    return await services.get_files_filter(filter_params,
+                                           page,
+                                           count_items)

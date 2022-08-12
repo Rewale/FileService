@@ -58,7 +58,7 @@ async def create_or_get_exist_file(filename: str, content: bytes) -> Tuple[bool,
     :param content: данные
     :return: (Создан новый файл, информация о файле)
     """
-    extension = filename.split('.')[-1]
+    extension = filename.split('.')[-1].lower()
     title = ".".join(filename.split('.')[:-1])
     md5 = hashlib.md5(content).hexdigest()
 
@@ -228,6 +228,21 @@ async def get_file_info(file_id):
 
 async def get_files() -> List[schemas.FileInfoItem]:
     files = await models.File.objects.all()
+    return list(map(file_info, files))
+
+
+async def get_files_filter(filter_params: schemas.FilterParams, page: Optional[int], count: int):
+    files = models.File.objects
+
+    if page and count:
+        files = files.paginate(page, count)
+
+    if filter_params.title_contains:
+        files = files.filter(title__contains=filter_params.title_contains)
+    if filter_params.extension:
+        files = files.filter(extension=filter_params.extension)
+
+    files = await files.all()
     return list(map(file_info, files))
 
 
