@@ -1,17 +1,17 @@
 import asyncio
-import hashlib
 import base64
+import hashlib
 import io
 import os.path
-from os import PathLike
-from typing import Tuple, Union, List, Optional
-
-from PIL import Image
-from pdf2image import convert_from_path, convert_from_bytes
+from typing import Tuple, List, Optional
 
 import aiofiles as aiof
+import loguru as loguru
+from PIL import Image
 from fastapi import UploadFile
+from pdf2image import convert_from_bytes
 from starlette.background import BackgroundTasks
+from starlette.responses import FileResponse
 
 from src.apps.files import models, schemas, custom_exceptions
 from src.config import settings
@@ -88,14 +88,17 @@ async def upload_file(file: UploadFile, background_task: BackgroundTasks) -> sch
                             title=file.title,
                             id=file.md5,
                             created=is_created_new,
-                            created_at=file.created_at)
+                            created_at=file.created_at,
+                            url_preview=get_url_preview(file.md5))
 
 
 async def _get_preview_pdf(file: models.File, dpi: int = 500) -> bytes:
     """ Превью pdf в виде изображения, блокирующая"""
+    loguru.logger.debug(f'Получить превью pdf {file}')
     path_exist = _get_exist_preview_path(file.filename_preview)
     if path_exist:
         content = await read_file(path_exist)
+        loguru.logger.debug(f'Уже существует {path_exist}')
         return content
     else:
         content = await read_file(_get_storage_path(file.filename))
@@ -103,6 +106,7 @@ async def _get_preview_pdf(file: models.File, dpi: int = 500) -> bytes:
                                                                       file.filename_preview,
                                                                       content)
         content_preview = await read_file(preview_path)
+        loguru.logger.debug(f'Создано превью для pdf {file.title}')
         return content_preview
 
 
@@ -161,10 +165,16 @@ async def _get_file_or_raise(file_md5: str) -> models.File:
     return file
 
 
-async def get_file(file_md5: str) -> str:
+async def get_file_path(file_md5: str) -> str:
     """ Путь до файла или изображение превью (для определенных расширений) """
     file = await _get_file_or_raise(file_md5)
     return _get_storage_path(file.filename)
+
+
+async def get_file_stream(file_md5: str) -> FileResponse:
+    file = await _get_file_or_raise(file_md5)
+    path = _get_storage_path(file.filename)
+    return FileResponse(path, media_type='application/octet-stream', filename=file.original_filename)
 
 
 async def get_file_b64(file_md5: str):
@@ -203,7 +213,7 @@ async def get_file_preview(file_md5: str, preview_dpi: int) -> bytes:
         # Запуск в executor блокирующей функции
         return await asyncio.get_event_loop().run_in_executor(None, _get_preview_image, file, preview_dpi)
     else:
-        raise custom_exceptions.NotSupportedFilePreviewException(file.md5, file.extension)
+        return await read_file(settings.PREVIEW_NON_SUPPORTED_IMAGE)
 
 
 def get_url_preview(md5: str):

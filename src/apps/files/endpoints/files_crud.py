@@ -1,11 +1,10 @@
-import hashlib
 from typing import List, Optional
 
 from fastapi import APIRouter, UploadFile
 from starlette.background import BackgroundTasks
 from starlette.responses import FileResponse, Response
 
-from .. import services, models, schemas
+from .. import services, schemas
 
 files_crud_router = APIRouter()
 
@@ -17,7 +16,7 @@ async def upload_file(file: UploadFile, background_task: BackgroundTasks):
 
 @files_crud_router.get('/', response_class=FileResponse)
 async def get_file(file_id: str):
-    return await services.get_file(file_id)
+    return await services.get_file_stream(file_id)
 
 
 @files_crud_router.get('/info', response_model=schemas.FileInfoItem)
@@ -37,7 +36,7 @@ async def get_file_b64(file_id: str):
 
 
 @files_crud_router.delete('/', response_model=schemas.FileInfo)
-async def get_file_b64(file_id: str, bt: BackgroundTasks):
+async def delete_file(file_id: str, bt: BackgroundTasks):
     return await services.delete_file(file_id, bt)
 
 

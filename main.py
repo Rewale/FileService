@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse, FileResponse
+from starlette.responses import JSONResponse, FileResponse, Response
 
 from src.apps.files.models import database, metadata, engine
 from src.apps.files.routers import files_router
@@ -27,14 +27,6 @@ async def not_found_file_exception_handler(request: Request, exc: NotFoundFileEx
     return JSONResponse(
         content={"message": "file not found"},
         status_code=404
-    )
-
-
-@app.exception_handler(NotSupportedFilePreviewException)
-async def not_found_file_exception_handler(request: Request, exc: NotFoundFileException):
-    return JSONResponse(
-        content={"message": str(exc)},
-        status_code=200
     )
 
 

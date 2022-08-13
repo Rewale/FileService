@@ -7,6 +7,7 @@ from pydantic import BaseModel
 # TODO: Mixin
 class FileInfo(BaseModel):
     extension: str
+    url_preview: Optional[str]
     title: str
     id: str
     created: bool
