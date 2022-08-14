@@ -2,6 +2,7 @@ import asyncio
 import base64
 import hashlib
 import io
+import math
 import os.path
 from typing import Tuple, List, Optional
 
@@ -249,7 +250,8 @@ async def get_files_filter(filter_params: schemas.FilterParams, page: Optional[i
     if filter_params.extension:
         files = files.filter(extension=filter_params.extension)
 
-    total_count = await files.count()
+    total_count = await files.count() / count
+    total_count = math.ceil(total_count)
 
     if page and count:
         files = files.paginate(page, count)
