@@ -19,3 +19,7 @@ __pycache__/
 .pyc
 *.pyc1
 /files_storage/*
+!/files_storage/previews
+!/files_storage/not_found.png
+/files_storage/previews/*
+!/files_storage/previews/placeholder-image.png
